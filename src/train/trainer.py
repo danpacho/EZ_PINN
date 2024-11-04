@@ -229,8 +229,7 @@ class Trainer(metaclass=ABCMeta):
             tuple: `(val_loss, val_accuracy)`
         """
         self._evaluate_setup()
-        with torch.no_grad():
-            return self._evaluate(validation_data)
+        return self._evaluate(validation_data)
 
     def _evaluate_setup(self) -> None:
         self.model.eval()
