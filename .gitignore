@@ -1,12 +1,7 @@
 # Personal
-src/tmm/matlab
-.tmm/
 model/*.pt
 model/*.pth
-.model/
-.lrp/
-.legacy/
-$pipeline$/
+.pinn_models/
 
 # -------------------- TEMPLATED --------------------
 # Byte-compiled / optimized / DLL files
