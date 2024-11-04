@@ -1,11 +1,8 @@
-from dataclasses import asdict, dataclass
-import json
 import os
 import statistics
 import torch
 
 from torch.utils.data import Dataset
-from typing import Literal, Union
 
 from tqdm.auto import tqdm
 from src.train.trainer import Trainer
@@ -15,6 +12,7 @@ from torch.utils.data import DataLoader
 
 from src.train.uuid_encoder import UUIDEncoder
 from src.train.storage.storage_unit import KeyValueStorage
+from src.utils.device_setup import get_device
 
 
 class Pipeline:
@@ -132,9 +130,7 @@ class Pipeline:
 
         self._log("Health Check", "Pipeline is ok to go")
 
-        self._device = self.get_device()
-        self._init_gpu()
-
+        self._device = get_device()
         self._log("GPU Setup", f"device: {self._device}")
 
         self.model_component.model.to(self._device)
@@ -158,16 +154,6 @@ class Pipeline:
 
         self._log("Trainer", "Dependencies injected")
         self.trainer.inject_dependencies(device=self._device)
-
-    def get_device(self, gpu_num: int = 3) -> Union[str, Literal["cpu"]]:
-        """
-        Get device
-        """
-        device = torch.device(f"cuda:{gpu_num}" if torch.cuda.is_available() else "cpu")
-        return device
-
-    def _init_gpu(self) -> None:
-        torch.cuda.set_device(self._device)
 
     @property
     def train_size(self) -> int:
