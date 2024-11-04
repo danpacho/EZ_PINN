@@ -46,26 +46,79 @@ class RectBoundarySampler(Sampler2D):
         # Get random domain sample
         domain_sample_x, domain_sample_y = self.random_sample()
 
-        # Get samples from each included side
+        # Get combined boundary samples for specified sides
+        boundary_sample_x, boundary_sample_y = self._sample_multiple_side(side_include)
+
+        return (domain_sample_x, domain_sample_y), (
+            boundary_sample_x,
+            boundary_sample_y,
+        )
+
+    def _sample_one_side(self, side: Literal["t", "l", "b", "r"]) -> torch.Tensor:
+        """
+        Sample from the boundary of one side of the rectangle
+
+        Args:
+            side (Literal["t", "l", "b", "r"]): Side to sample from
+
+        Returns:
+            torch.Tensor: Sampled x and y coordinates
+        """
+        if side == "t":
+            x_ranges = (self.x_sampler.ranges[0], self.x_sampler.ranges[1])
+            y_ranges = (self.y_sampler.ranges[1], self.y_sampler.ranges[1])
+            x_num_samples = self.boundary_sample_count_x
+            y_num_samples = 1
+        elif side == "b":
+            x_ranges = (self.x_sampler.ranges[0], self.x_sampler.ranges[1])
+            y_ranges = (self.y_sampler.ranges[0], self.y_sampler.ranges[0])
+            x_num_samples = self.boundary_sample_count_x
+            y_num_samples = 1
+        elif side == "l":
+            x_ranges = (self.x_sampler.ranges[0], self.x_sampler.ranges[0])
+            y_ranges = (self.y_sampler.ranges[0], self.y_sampler.ranges[1])
+            x_num_samples = 1
+            y_num_samples = self.boundary_sample_count_y
+        elif side == "r":
+            x_ranges = (self.x_sampler.ranges[1], self.x_sampler.ranges[1])
+            y_ranges = (self.y_sampler.ranges[0], self.y_sampler.ranges[1])
+            x_num_samples = 1
+            y_num_samples = self.boundary_sample_count_y
+        else:
+            raise ValueError(
+                f"Invalid side '{side}' specified. Choose from 't', 'b', 'l', or 'r'."
+            )
+
+        # Create and return a sample for the specified side
+        sampler = Sampler2D(
+            x_ranges=x_ranges,
+            y_ranges=y_ranges,
+            x_num_samples=x_num_samples,
+            y_num_samples=y_num_samples,
+        )
+        return sampler.random_sample()
+
+    def _sample_multiple_side(
+        self, sides: list[Literal["t", "l", "b", "r"]]
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Sample from multiple specified sides of the rectangle and return combined boundary samples.
+
+        Args:
+            sides (list[Literal["t", "l", "b", "r"]]): List of sides to sample from.
+
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]: Combined x and y coordinates for the sampled boundaries.
+        """
         boundary_sample_x_list = []
         boundary_sample_y_list = []
 
-        top, bottom, left, right = self._sample_side()
+        for side in sides:
+            side_sample = self._sample_one_side(side)
+            boundary_sample_x_list.append(side_sample[0])
+            boundary_sample_y_list.append(side_sample[1])
 
-        if "t" in side_include:
-            boundary_sample_x_list.append(top[0])
-            boundary_sample_y_list.append(top[1])
-        if "b" in side_include:
-            boundary_sample_x_list.append(bottom[0])
-            boundary_sample_y_list.append(bottom[1])
-        if "l" in side_include:
-            boundary_sample_x_list.append(left[0])
-            boundary_sample_y_list.append(left[1])
-        if "r" in side_include:
-            boundary_sample_x_list.append(right[0])
-            boundary_sample_y_list.append(right[1])
-
-        # Concatenate all included boundary samples
+        # Concatenate all samples for the specified sides
         boundary_sample_x = (
             torch.cat(boundary_sample_x_list, dim=0)
             if boundary_sample_x_list
@@ -77,58 +130,18 @@ class RectBoundarySampler(Sampler2D):
             else torch.tensor([])
         )
 
-        return (
-            domain_sample_x,
-            domain_sample_y,
-        ), (
-            boundary_sample_x,
-            boundary_sample_y,
-        )
+        return boundary_sample_x, boundary_sample_y
 
     def _sample_side(self):
-        # Define ranges and values for the four sides
-        top_range = (self.x_sampler.ranges[0], self.x_sampler.ranges[1])
-        top_value = self.y_sampler.ranges[1]
+        """
+        Sample from all sides of the rectangle
 
-        bottom_range = (self.x_sampler.ranges[0], self.x_sampler.ranges[1])
-        bottom_value = self.y_sampler.ranges[0]
-
-        left_range = (self.y_sampler.ranges[0], self.y_sampler.ranges[1])
-        left_value = self.x_sampler.ranges[0]
-
-        right_range = (self.y_sampler.ranges[0], self.y_sampler.ranges[1])
-        right_value = self.x_sampler.ranges[1]
-
-        # Create samplers for each side
-        top_sampler = Sampler2D(
-            x_ranges=top_range,
-            y_ranges=(top_value, top_value),
-            x_num_samples=self.boundary_sample_count_x,
-            y_num_samples=1,
-        )
-        bottom_sampler = Sampler2D(
-            x_ranges=bottom_range,
-            y_ranges=(bottom_value, bottom_value),
-            x_num_samples=self.boundary_sample_count_x,
-            y_num_samples=1,
-        )
-        left_sampler = Sampler2D(
-            x_ranges=(left_value, left_value),
-            y_ranges=left_range,
-            x_num_samples=1,
-            y_num_samples=self.boundary_sample_count_y,
-        )
-        right_sampler = Sampler2D(
-            x_ranges=(right_value, right_value),
-            y_ranges=right_range,
-            x_num_samples=1,
-            y_num_samples=self.boundary_sample_count_y,
-        )
-
-        # Return samples for each side as tuples of (x, y) coordinates
+        Returns:
+            tuple: (top, bottom, left, right)
+        """
         return (
-            top_sampler.random_sample(),
-            bottom_sampler.random_sample(),
-            left_sampler.random_sample(),
-            right_sampler.random_sample(),
+            self._sample_one_side("t"),
+            self._sample_one_side("b"),
+            self._sample_one_side("l"),
+            self._sample_one_side("r"),
         )
