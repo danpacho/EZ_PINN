@@ -2,6 +2,7 @@
 model/*.pt
 model/*.pth
 .pinn_models/
+*.pth
 
 # -------------------- TEMPLATED --------------------
 # Byte-compiled / optimized / DLL files
