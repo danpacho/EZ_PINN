@@ -57,15 +57,17 @@ class TrainConfig:
         if self.epoch <= 0:
             raise ValueError("Epoch should be greater than 0.")
 
-        if self.early_stopping is not None and self.early_stopping <= 0:
-            raise ValueError("Early stopping should be greater than 0.")
-
         if self.early_stopping is None:
             BASE_TOLERANCE = 30
             self.early_stopping = BASE_TOLERANCE
+            return
 
         if self.early_stopping is False:
             self.early_stopping = 0
+            return
+
+        if self.early_stopping is not None and self.early_stopping <= 0:
+            raise ValueError("Early stopping should be greater than 0.")
 
     def to_json(self) -> str:
         """
